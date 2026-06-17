@@ -1,0 +1,5 @@
+.tmp-tests/
+.tools/
+__pycache__/
+*.pyc
+.codex-handoff/
