@@ -162,9 +162,6 @@ that target thread.
 Before publishing your fork, read [docs/PUBLISHING.md](docs/PUBLISHING.md) and
 choose a license.
 
-## License
-
-MIT. See [LICENSE](LICENSE).
 
 ## Contributing
 
