@@ -12,3 +12,4 @@
 - Added optional App Server HTTP self-test.
 - Added PowerShell wrapper and installer.
 - Added GitHub-ready documentation.
+- Added bilingual documentation and `--lang zh-CN` human-readable CLI output.

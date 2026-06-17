@@ -39,6 +39,7 @@ DEFAULT_EVIDENCE_MAX_EVENTS = 200
 DEFAULT_EVIDENCE_KEEP_EVENTS = 80
 DEFAULT_CONTEXT_MAX_TOKENS = 24000
 DEFAULT_CONTEXT_WARN_RATIO = 0.75
+LANG = "en"
 
 REQUIRED_FILES = [
     ROOT / "AGENTS.md",
@@ -56,6 +57,61 @@ REQUIRED_FILES = [
 ]
 
 DEFAULT_SHORT_PROMPT = "Continue this Codex project thread. First read .codex-handoff/next_prompt.md, then follow it exactly."
+
+MESSAGES = {
+    "initialized": {"en": "initialized", "zh-CN": "已初始化"},
+    "verify_ok": {"en": "verify: ok", "zh-CN": "验证：通过"},
+    "verify_failed": {"en": "verify: failed", "zh-CN": "验证：失败"},
+    "error": {"en": "ERROR", "zh-CN": "错误"},
+    "warn": {"en": "WARN", "zh-CN": "警告"},
+    "ready_for_handoff": {"en": "ready_for_handoff", "zh-CN": "可交接"},
+    "workspace": {"en": "workspace", "zh-CN": "工作区"},
+    "registry_entries": {"en": "registry_entries", "zh-CN": "登记记录数"},
+    "latest_migrated": {"en": "latest_migrated", "zh-CN": "最新交接已迁移"},
+    "next_commands": {"en": "next_commands", "zh-CN": "下一步命令"},
+    "handoff": {"en": "handoff", "zh-CN": "交接文件"},
+    "next_prompt": {"en": "next_prompt", "zh-CN": "下一线程提示"},
+    "archive": {"en": "archive", "zh-CN": "归档"},
+    "archive_created": {"en": "archive_created", "zh-CN": "已创建归档"},
+    "auto_trigger": {"en": "auto_trigger", "zh-CN": "自动触发原因"},
+    "mark_migrated_ok": {"en": "mark_migrated: ok", "zh-CN": "迁移标记：完成"},
+    "accept_handoff_ok": {"en": "accept_handoff: ok", "zh-CN": "交接验收：完成"},
+    "accept_handoff_dry_run": {"en": "accept_handoff: dry-run", "zh-CN": "交接验收：试运行"},
+    "completion_overall_status": {"en": "overall_status", "zh-CN": "总体状态"},
+    "pass_count": {"en": "pass_count", "zh-CN": "通过数"},
+    "boundary_count": {"en": "boundary_count", "zh-CN": "边界项数"},
+    "fail_count": {"en": "fail_count", "zh-CN": "失败数"},
+}
+
+
+def msg(key: str) -> str:
+    value = MESSAGES.get(key, {})
+    return value.get(LANG, value.get("en", key))
+
+
+def parse_lang(argv: list[str] | None) -> tuple[list[str] | None, str]:
+    if argv is None:
+        argv = sys.argv[1:]
+    parsed: list[str] = []
+    lang = "en"
+    idx = 0
+    while idx < len(argv):
+        item = argv[idx]
+        if item == "--lang":
+            if idx + 1 >= len(argv):
+                raise SystemExit("--lang requires a value: en or zh-CN")
+            lang = argv[idx + 1]
+            idx += 2
+            continue
+        if item.startswith("--lang="):
+            lang = item.split("=", 1)[1]
+            idx += 1
+            continue
+        parsed.append(item)
+        idx += 1
+    if lang not in {"en", "zh-CN"}:
+        raise SystemExit("--lang must be en or zh-CN")
+    return parsed, lang
 
 
 def escaped_workspace_path() -> str:
@@ -1155,7 +1211,7 @@ def command_init(_: argparse.Namespace) -> int:
     if not next_prompt_path.exists() or not read_text(next_prompt_path).strip():
         write_text(next_prompt_path, make_next_prompt())
     append_evidence("FACT", "init", "Initialized or repaired Codex handoff scaffold.")
-    print(f"initialized: {HANDOFF_DIR}")
+    print(f"{msg('initialized')}: {HANDOFF_DIR}")
     return 0
 
 
@@ -1169,10 +1225,10 @@ def command_checkpoint(args: argparse.Namespace) -> int:
         append_evidence("EVIDENCE", "checkpoint", "Created handoff checkpoint.", {"archive": str(archive_path)})
     else:
         append_evidence("EVIDENCE", "checkpoint", "Skipped duplicate checkpoint during cooldown.", {"archive": str(archive_path)})
-    print(f"handoff: {HANDOFF_DIR / 'handoff.md'}")
-    print(f"next_prompt: {HANDOFF_DIR / 'next_prompt.md'}")
-    print(f"archive: {archive_path}")
-    print(f"archive_created: {created}")
+    print(f"{msg('handoff')}: {HANDOFF_DIR / 'handoff.md'}")
+    print(f"{msg('next_prompt')}: {HANDOFF_DIR / 'next_prompt.md'}")
+    print(f"{msg('archive')}: {archive_path}")
+    print(f"{msg('archive_created')}: {created}")
     return 0
 
 
@@ -1226,7 +1282,7 @@ def command_auto(args: argparse.Namespace) -> int:
             append_evidence("EVIDENCE", "auto", "Automatic context-pressure compaction completed.", compaction)
         args.reason = args.reason or f"context pressure reached {pressure.get('estimated_tokens')} estimated tokens"
     needed, trigger = needs_auto_checkpoint(args.reason)
-    print(f"auto_trigger: {trigger}")
+    print(f"{msg('auto_trigger')}: {trigger}")
     if needed:
         checkpoint_args = argparse.Namespace(force=args.force)
         result = command_checkpoint(checkpoint_args)
@@ -1678,16 +1734,16 @@ def command_verify(_: argparse.Namespace) -> int:
     errors, warnings = collect_verify_result()
 
     if errors:
-        print("verify: failed")
+        print(msg("verify_failed"))
         for item in errors:
-            print(f"ERROR: {item}")
+            print(f"{msg('error')}: {item}")
         for item in warnings:
-            print(f"WARN: {item}")
+            print(f"{msg('warn')}: {item}")
         return 1
 
-    print("verify: ok")
+    print(msg("verify_ok"))
     for item in warnings:
-        print(f"WARN: {item}")
+        print(f"{msg('warn')}: {item}")
     return 0
 
 
@@ -1844,17 +1900,17 @@ def command_status(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return 0
-    print(f"workspace: {payload['workspace']}")
+    print(f"{msg('workspace')}: {payload['workspace']}")
     print(f"handoff_dir: {payload['handoff_dir']}")
     print(f"handoff_exists: {payload['handoff_exists']}")
     print(f"next_prompt_exists: {payload['next_prompt_exists']}")
-    print(f"registry_entries: {payload['registry_entries']}")
+    print(f"{msg('registry_entries')}: {payload['registry_entries']}")
     latest = payload.get("latest")
     if isinstance(latest, dict):
         print(f"latest_handoff: {latest.get('handoff_file')}")
         print(f"latest_created_at: {latest.get('handoff_created_at')}")
         print(f"latest_hash: {latest.get('handoff_hash')}")
-        print(f"latest_migrated: {latest.get('migrated')}")
+        print(f"{msg('latest_migrated')}: {latest.get('migrated')}")
         print(f"latest_new_thread_id: {latest.get('new_thread_id')}")
     attempt = payload.get("deep_link_open_attempt")
     if isinstance(attempt, dict):
@@ -1886,7 +1942,7 @@ def command_mark_migrated(args: argparse.Namespace) -> int:
     write_text(registry_path, json.dumps(registry, indent=2, ensure_ascii=False) + "\n")
     sync_current_state_migration(args.thread_id)
     append_evidence("EVIDENCE", "mark-migrated", "Marked latest handoff as migrated.", {"new_thread_id": args.thread_id})
-    print("mark_migrated: ok")
+    print(msg("mark_migrated_ok"))
     return 0
 
 
@@ -1941,7 +1997,7 @@ def command_accept_handoff(args: argparse.Namespace) -> int:
         if args.json:
             print(json.dumps(result, indent=2, ensure_ascii=False))
         else:
-            print("accept_handoff: dry-run")
+            print(msg("accept_handoff_dry_run"))
             print(f"thread_id: {args.thread_id}")
         return 0
     record_external_validation(args.launch_target, "pass", launch_evidence, args.thread_id)
@@ -1955,7 +2011,7 @@ def command_accept_handoff(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
-        print("accept_handoff: ok")
+        print(msg("accept_handoff_ok"))
         print(f"handoff_acceptance: {out_path}")
         print(f"thread_id: {args.thread_id}")
     return 0
@@ -2031,15 +2087,15 @@ def command_doctor(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
-        print(f"ready_for_handoff: {ready_for_handoff}")
-        print(f"workspace: {payload['workspace']}")
-        print(f"registry_entries: {payload['registry_entries']}")
-        print(f"latest_migrated: {payload['latest_migrated']}")
+        print(f"{msg('ready_for_handoff')}: {ready_for_handoff}")
+        print(f"{msg('workspace')}: {payload['workspace']}")
+        print(f"{msg('registry_entries')}: {payload['registry_entries']}")
+        print(f"{msg('latest_migrated')}: {payload['latest_migrated']}")
         for item in errors:
-            print(f"ERROR: {item}")
+            print(f"{msg('error')}: {item}")
         for item in warnings:
-            print(f"WARN: {item}")
-        print("next_commands:")
+            print(f"{msg('warn')}: {item}")
+        print(f"{msg('next_commands')}:")
         for item in payload["next_commands"]:
             print(f"- {item}")
     return 0 if ready_for_handoff else 1
@@ -2074,11 +2130,14 @@ def evaluate_requirement(req: dict[str, object]) -> dict[str, object]:
     if isinstance(required_command, list) and all(isinstance(item, str) for item in required_command):
         stdout = io.StringIO()
         stderr = io.StringIO()
+        previous_lang = LANG
         try:
             with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                 result = main([str(item) for item in required_command])
         except SystemExit as exc:
             result = int(exc.code) if isinstance(exc.code, int) else 1
+        finally:
+            globals()["LANG"] = previous_lang
         if result == 0:
             evidence.append(f"command passed: {' '.join(required_command)}")
         else:
@@ -2179,10 +2238,10 @@ def command_completion_audit(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(audit, indent=2, ensure_ascii=False))
     else:
-        print(f"overall_status: {audit['overall_status']}")
-        print(f"pass_count: {audit['pass_count']}")
-        print(f"boundary_count: {audit['boundary_count']}")
-        print(f"fail_count: {audit['fail_count']}")
+        print(f"{msg('completion_overall_status')}: {audit['overall_status']}")
+        print(f"{msg('pass_count')}: {audit['pass_count']}")
+        print(f"{msg('boundary_count')}: {audit['boundary_count']}")
+        print(f"{msg('fail_count')}: {audit['fail_count']}")
         for item in items:
             print(f"{item['id']} {item['status']}: {item['name']}")
     return 1 if failures else 0
@@ -2385,7 +2444,10 @@ def command_maintenance(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="codex-handoff")
+    parser = argparse.ArgumentParser(
+        prog="codex-handoff",
+        epilog="Language: pass --lang en or --lang zh-CN before or after the subcommand. JSON keys stay English.",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("init").set_defaults(func=command_init)
     checkpoint = sub.add_parser("checkpoint")
@@ -2484,6 +2546,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    global LANG
+    argv, LANG = parse_lang(argv)
     parser = build_parser()
     args = parser.parse_args(argv)
     return int(args.func(args))

@@ -8,6 +8,7 @@ Keep:
 
 ```text
 README.md
+README.zh-CN.md
 ACCEPTANCE.md
 AGENTS.md
 install.ps1
@@ -23,6 +24,8 @@ scripts/test_codex_handoff.py
 docs/INSTALL.md
 docs/USAGE.md
 docs/PUBLISHING.md
+docs/zh-CN/INSTALL.md
+docs/zh-CN/USAGE.md
 .gitignore
 ```
 

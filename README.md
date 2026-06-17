@@ -1,5 +1,7 @@
 # Codex Context Handoff Bridge
 
+English | [中文](README.zh-CN.md)
+
 Codex Context Handoff Bridge is a project-local context compression and handoff
 helper for long-running Codex App work.
 
@@ -19,6 +21,7 @@ the handoff files before continuing.
 - Optional `codex://` Deep Link probe.
 - Optional App Server HTTP self-test path.
 - Windows-friendly PowerShell wrapper and installer.
+- Bilingual documentation and `--lang zh-CN` for human-readable CLI output.
 
 ## Repository Layout
 
@@ -36,6 +39,9 @@ scripts/test_codex_handoff.py
 docs/INSTALL.md
 docs/USAGE.md
 docs/PUBLISHING.md
+README.zh-CN.md
+docs/zh-CN/INSTALL.md
+docs/zh-CN/USAGE.md
 AGENTS.md
 ACCEPTANCE.md
 ```
@@ -99,6 +105,13 @@ Check readiness:
 .\scripts\codex-handoff.ps1 status --json
 .\scripts\codex-handoff.ps1 context-status --json
 .\scripts\codex-handoff.ps1 completion-audit --json
+```
+
+Chinese human-readable output:
+
+```powershell
+.\scripts\codex-handoff.ps1 doctor --lang zh-CN
+.\scripts\codex-handoff.ps1 status --lang zh-CN
 ```
 
 Run local smoke verification:

@@ -23,6 +23,8 @@ def safe_print(value: str) -> None:
 
 
 def run(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
         cwd=cwd,
@@ -31,6 +33,7 @@ def run(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=env,
     )
 
 
@@ -150,6 +153,18 @@ def main() -> int:
         empty_audit = json.loads(expect_success(empty_cwd, "completion-audit", "--json").stdout)
         if empty_audit.get("overall_status") != "pass":
             print("empty project init did not produce a passing default completion audit")
+            return 1
+        zh_verify = expect_success(empty_cwd, "verify", "--lang", "zh-CN").stdout
+        if "\u9a8c\u8bc1\uff1a\u901a\u8fc7" not in zh_verify:
+            print("verify --lang zh-CN did not print localized output")
+            return 1
+        zh_doctor = expect_success(empty_cwd, "doctor", "--lang", "zh-CN").stdout
+        if "\u53ef\u4ea4\u63a5:" not in zh_doctor:
+            print("doctor --lang zh-CN did not print localized output")
+            return 1
+        zh_audit = expect_success(empty_cwd, "completion-audit", "--lang", "zh-CN").stdout
+        if "\u603b\u4f53\u72b6\u6001:" not in zh_audit:
+            print("completion-audit --lang zh-CN did not print localized output")
             return 1
     except AssertionError as exc:
         print(str(exc))
