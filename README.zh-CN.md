@@ -118,6 +118,3 @@ AGENTS.md
 - [安装说明](docs/zh-CN/INSTALL.md)
 - [使用说明](docs/zh-CN/USAGE.md)
 
-## 许可证
-
-MIT。见 [LICENSE](LICENSE)。
