@@ -55,8 +55,64 @@ def expect_failure(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return proc
 
 
+def test_seed_requirements_payload() -> dict[str, object]:
+    return {
+        "version": 1,
+        "requirements": [
+            {
+                "id": "R001",
+                "name": "Project-local state source",
+                "required_paths": [
+                    "AGENTS.md",
+                    ".codex-handoff/current_state.yaml",
+                    ".codex-handoff/decisions.yaml",
+                    ".codex-handoff/handoff.md",
+                    ".codex-handoff/next_prompt.md",
+                    ".codex-handoff/evidence.jsonl",
+                    ".codex-handoff/thread_registry.json",
+                    ".codex-handoff/risk_rules.yaml",
+                    ".codex-handoff/config.json",
+                    ".codex-handoff/evidence_summary.md",
+                    ".codex-handoff/external_acceptance.json",
+                ],
+            },
+            {
+                "id": "R002",
+                "name": "Structured handoff tags",
+                "required_handoff_tags": ["[FACT]", "[DECISION]", "[TODO]", "[OPEN]", "[REJECTED]", "[EVIDENCE]"],
+            },
+            {
+                "id": "R003",
+                "name": "Core CLI commands",
+                "required_cli_commands": [
+                    "init",
+                    "checkpoint",
+                    "auto",
+                    "verify",
+                    "status",
+                    "doctor",
+                    "context-status",
+                    "compact-evidence",
+                    "external-next",
+                    "accept-handoff",
+                    "completion-audit",
+                ],
+            },
+            {
+                "id": "R012",
+                "name": "Real Codex App external acceptance",
+                "external_validation_targets": ["codex-app-thread-create", "new-thread-read"],
+                "boundary": (
+                    "Record real Codex App validation after creating a target thread for the same workspace and "
+                    "confirming the new thread reads the handoff."
+                ),
+            },
+        ],
+    }
+
+
 def copy_seed_files(dst: Path) -> None:
-    for rel in [
+    seed_rels = [
         "AGENTS.md",
         ".codex-handoff/current_state.yaml",
         ".codex-handoff/decisions.yaml",
@@ -71,8 +127,31 @@ def copy_seed_files(dst: Path) -> None:
         ".codex-handoff/thread_registry.json",
         ".codex-handoff/handoff.md",
         ".codex-handoff/next_prompt.md",
+    ]
+    always_copy = [
+        "AGENTS.md",
         "scripts/handoff-smoke.ps1",
-    ]:
+    ]
+    for rel in always_copy:
+        src = REPO / rel
+        if not src.exists():
+            continue
+        target = dst / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(src.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
+
+    if not all((REPO / rel).exists() for rel in seed_rels):
+        expect_success(dst, "init")
+        expect_success(dst, "checkpoint")
+        requirements_path = dst / ".codex-handoff/requirements.json"
+        requirements_path.write_text(
+            json.dumps(test_seed_requirements_payload(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+            newline="\n",
+        )
+        return
+
+    for rel in seed_rels:
         src = REPO / rel
         target = dst / rel
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -400,6 +479,8 @@ def main() -> int:
         print("record-external did not persist latest validation status")
         return 1
 
+    concurrent_env = os.environ.copy()
+    concurrent_env["PYTHONIOENCODING"] = "utf-8"
     concurrent_a = subprocess.Popen(
         [
             sys.executable,
@@ -418,6 +499,7 @@ def main() -> int:
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=concurrent_env,
     )
     concurrent_b = subprocess.Popen(
         [
@@ -437,6 +519,7 @@ def main() -> int:
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=concurrent_env,
     )
     out_a, err_a = concurrent_a.communicate(timeout=20)
     out_b, err_b = concurrent_b.communicate(timeout=20)
